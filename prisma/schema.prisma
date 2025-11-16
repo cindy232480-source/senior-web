@@ -1,0 +1,106 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  passwordHash   String
+  displayName    String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // 配對
+  likesGiven     Match[]        @relation("Liker")
+  likesReceived  Match[]        @relation("Liked")
+
+  // 活動：我報名過的
+  joinedActivities ActivityJoin[]
+
+  // 🆕 活動：我自己建立的（這一行就是剛剛缺的那個）
+  activitiesCreated Activity[]  @relation("CreatedActivities")
+
+  // 聊天
+  sentMessages     Message[]    @relation("SentMessages")
+  receivedMessages Message[]    @relation("ReceivedMessages")
+
+  // 個人資料
+  gender       String?
+  ageGroup     String?
+  city         String?
+  interests    String?
+  bio          String?
+  avatarUrl    String?
+  galleryUrls  String[] @default([])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  location    String?
+  category    String
+  capacity    Int?
+  createdAt   DateTime @default(now())
+
+  // 🆕 建立者
+  creatorId   String
+  creator     User     @relation("CreatedActivities", fields: [creatorId], references: [id])
+
+  // 🆕 主辦人聯絡電話（報名者在活動詳情會看到）
+  contactPhone String?
+
+  participants ActivityJoin[]
+}
+
+
+model ActivityJoin {
+  id         String   @id @default(cuid())
+  userId     String
+  activityId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  likerId   String
+  likedId   String
+  isMutual  Boolean  @default(false)
+
+  liker User @relation("Liker", fields: [likerId], references: [id])
+  liked User @relation("Liked", fields: [likedId], references: [id])
+
+  @@unique([likerId, likedId])
+  @@index([likerId])
+  @@index([likedId])
+}
+
+enum ChatSource {
+  MATCH          // 交友配對來的
+  ACTIVITY_CARD  // 活動：找牌咖
+  ACTIVITY_TRIP  // 活動：找旅伴/玩伴
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  content     String
+  senderId    String
+  receiverId  String
+  read        Boolean  @default(false)
+
+  source      ChatSource?
+
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}

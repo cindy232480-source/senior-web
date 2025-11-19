@@ -13,6 +13,7 @@ cloudinary.config({
 });
 
 export async function POST(req: Request) {
+  console.log("🚀 Cloudinary upload route HIT");
   try {
     // 檢查 Cloudinary 環境變數是否有設定
     if (!cloudName || !apiKey || !apiSecret) {
